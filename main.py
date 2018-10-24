@@ -1,9 +1,8 @@
 from netfilterqueue import NetfilterQueue
 from scapy.all import *
-try:
-    import scapy_http.http
-except ImportError:
-    from scapy.layers import http
+import urllib3
+from
+
 
 
 def intercept(packet):
