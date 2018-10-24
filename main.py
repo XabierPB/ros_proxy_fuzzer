@@ -16,45 +16,46 @@ class BytesIOSocket:
 def response_from_bytes(data):
     sock = BytesIOSocket(data)
 
-    response = HTTPResponse(sock)
-    response.begin()
+    http_response = HTTPResponse(sock)
+    http_response.begin()
 
-    return urllib3.HTTPResponse.from_httplib(response)
+    return urllib3.HTTPResponse.from_httplib(http_response)
 
 
 def intercept(packet):
     payload = packet.get_payload()
-    print('[+] Packet has arrived: ')
+    # print('[+] Packet has arrived: ')
     # print(payload.hex()) # Prints something like: 45000034a5b340003906b73c02142c78ac140a340050b024...
     # print(packet)  # Prints something like: TCP packet, 152 bytes
-
     spkt = IP(payload)
-    xmlrpc_packet = spkt['IP']['TCP'].payload
+    if spkt.haslayer('TCP'):
+        payload = spkt['IP']['TCP'].payload
+        if len(payload) > 0:
+            load_bytes = payload.load
+            try:
+                if load_bytes.startswith(b'HTTP/1.0') or load_bytes.startswith(b'HTTP/1.0'):
+                    response = response_from_bytes(load_bytes)
+                    print(response.headers)
+                    #print(response.data)
+                elif load_bytes.startswith(b'POST'):
+                    request = load_bytes.decode().split('\r\n\r\n')
+                    request_header = request[0]
+                    request_content = request[1]
+                    print(request_header)
 
+                    print('-'*78)
 
-
+            except ValueError:
+                pass
     packet.accept()
-
-
-
 
 
 nfqueue = NetfilterQueue()
 nfqueue.bind(0, intercept)
 
-
 try:
     print('[+] Waiting for packets...')
     nfqueue.run()
-
-
-    xmlrpc_packet = p['IP']['TCP'].payload
-
-
-    response = response_from_bytes(xmlrpc_packet.load)
-    print(response.headers)
-    print(response.data)
-
 
 except KeyboardInterrupt:
     print('[?] Shutting down...')
