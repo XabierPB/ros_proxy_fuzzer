@@ -1,8 +1,25 @@
 from netfilterqueue import NetfilterQueue
 from scapy.all import *
 import urllib3
-from
+from io import BytesIO
+from http.client import HTTPResponse
 
+
+class BytesIOSocket:
+    def __init__(self, content):
+        self.handle = BytesIO(content)
+
+    def makefile(self, mode):
+        return self.handle
+
+
+def response_from_bytes(data):
+    sock = BytesIOSocket(data)
+
+    response = HTTPResponse(sock)
+    response.begin()
+
+    return urllib3.HTTPResponse.from_httplib(response)
 
 
 def intercept(packet):
@@ -12,28 +29,34 @@ def intercept(packet):
     # print(packet)  # Prints something like: TCP packet, 152 bytes
 
     spkt = IP(payload)
-    #spkt.show()  # prints dissected IP packet
+    xmlrpc_packet = spkt['IP']['TCP'].payload
 
-    if spkt.haslayer('Raw'):
-        raw = spkt[Raw].load
-        print(ord(raw[slice(0, 1)]))
-    else:
-        xmlrpc_packet = http.HTTP(spkt['IP']['TCP'].payload)
-        xmlrpc_packet.show()  # prints dissected IP packet
+
 
     packet.accept()
+
+
+
 
 
 nfqueue = NetfilterQueue()
 nfqueue.bind(0, intercept)
 
+
 try:
     print('[+] Waiting for packets...')
-    #nfqueue.run()
-    packets = rdpcap('ros.pcapng')
-    for p in packets:
-        print('='*78)
-        xmlrpc_packet = p['IP']['TCP'].payload
-        xmlrpc_packet.show()  # prints dissected IP packet
+    nfqueue.run()
+
+
+    xmlrpc_packet = p['IP']['TCP'].payload
+
+
+    response = response_from_bytes(xmlrpc_packet.load)
+    print(response.headers)
+    print(response.data)
+
+
 except KeyboardInterrupt:
     print('[?] Shutting down...')
+except Exception as e:
+    print(e)
