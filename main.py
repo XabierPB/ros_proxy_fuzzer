@@ -3,6 +3,7 @@ from scapy.all import *
 import urllib3
 from io import BytesIO
 from http.client import HTTPResponse
+import untangle
 
 
 class BytesIOSocket:
@@ -34,9 +35,11 @@ def intercept(packet):
             load_bytes = payload.load
             try:
                 if load_bytes.startswith(b'HTTP/1.0') or load_bytes.startswith(b'HTTP/1.0'):
+                    # TODO Debug to find the fileds of response
                     response = response_from_bytes(load_bytes)
                     print(response.headers)
                     #print(response.data)
+                    xml_obj = 
                 elif load_bytes.startswith(b'POST'):
                     request = load_bytes.decode().split('\r\n\r\n')
                     request_header = request[0]
